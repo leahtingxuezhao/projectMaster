@@ -13,16 +13,78 @@ const reorder = (list, startIndex, endIndex) => {
 /**
  * Moves an item from one list to another list.
  */
-const move = (source, destination, droppableSource, droppableDestination) => {
+
+const id4List = {
+  droppable: "tasks",
+  droppable2: "inProgress",
+  droppable3: "review",
+  droppable4: "done"
+};
+const move = (
+  source,
+  destination,
+  droppableSource,
+  droppableDestination,
+  setState
+) => {
   const sourceClone = Array.from(source);
   const destClone = Array.from(destination);
   const [removed] = sourceClone.splice(droppableSource.index, 1);
+  const sourceId = id4List[droppableSource.droppableId];
+  const destId = id4List[droppableDestination.droppableId];
 
   destClone.splice(droppableDestination.index, 0, removed);
 
+  // optimistic update
+  setState({
+    [sourceId]: sourceClone,
+    [destId]: destClone
+  });
+
+  const updateTaskInProgress = () => {
+    axios.put(`/api/updateTaskToInProgress/${removed.task_id}`).then(res => {
+      setState({
+        [sourceId]: sourceClone,
+        [destId]: destClone
+      });
+    });
+  };
+
+  const updateTaskToDo = () => {
+    axios.put(`/api/updateTaskToDo/${removed.task_id}`).then(res => {
+      setState({
+        [sourceId]: sourceClone,
+        [destId]: destClone
+      });
+    });
+  };
+  const updateTaskToReview = () => {
+    axios.put(`/api/updateTaskToReview/${removed.task_id}`).then(res => {
+      setState({
+        [sourceId]: sourceClone,
+        [destId]: destClone
+      });
+    });
+  };
+
+  const updateTaskToDone = () => {
+    axios.put(`/api/updateTaskToDone/${removed.task_id}`).then(res => {
+      setState({
+        [sourceId]: sourceClone,
+        [destId]: destClone
+      });
+    });
+  };
+  if (droppableDestination.droppableId === "droppable2") {
+    updateTaskInProgress();
+  } else if (droppableDestination.droppableId === "droppable3") {
+    updateTaskToReview();
+  } else if (droppableDestination.droppableId === "droppable") {
+    updateTaskToDo();
+  }
   const result = {};
-  result[droppableSource.droppableId] = sourceClone;
-  result[droppableDestination.droppableId] = destClone;
+  result[sourceId] = sourceClone;
+  result[destId] = destClone;
 
   return result;
 };
@@ -60,18 +122,11 @@ class App extends Component {
     this.onDragEnd = this.onDragEnd.bind(this);
   }
 
-  id4List = {
-    droppable: "tasks",
-    droppable2: "inProgress",
-    droppable3: "review",
-    droppable4: "done"
-  };
-
-  componentDidMount() {
-    this.getTasksToDo();
-    this.getTasksInProgress();
-    this.getTasksReview();
-    this.getTasksDone();
+  async componentDidMount() {
+    await this.getTasksToDo();
+    await this.getTasksInProgress();
+    await this.getTasksReview();
+    // await this.getTasksDone();
   }
 
   getTasksToDo = () => {
@@ -79,7 +134,6 @@ class App extends Component {
     axios
       .get(`/api/getToDoTasks/${owner}`)
       .then(res => {
-        console.log("res :", res);
         this.setState({ tasks: res.data });
       })
       .catch(err => console.log("err", err));
@@ -115,35 +169,10 @@ class App extends Component {
       .catch(err => console.log("err", err));
   };
 
-  // updateTaskInProgress = () => {
-  //   axios.put(`/api/updateTaskToInProgress/${task_id}`).then(res => {
-  //     this.setState({ tasks: res.data, inProgress: res.data });
-  //   });
-  // };
-
-  getList = id => this.state[this.id4List[id]];
-
-  onDragEnd(result) {
-    // dropped outside the list
-    if (!result.destination) {
-      return;
-    }
-
-    const tasks = reorder(
-      this.state.tasks,
-      result.source.index,
-      result.destination.index
-    );
-
-    this.setState({
-      tasks
-    });
-  }
+  getList = id => this.state[id4List[id]];
 
   onDragEnd = result => {
     const { source, destination } = result;
-    console.log("source :", source);
-    console.log("destination :", destination);
 
     // dropped outside the list
     if (!destination) {
@@ -151,30 +180,35 @@ class App extends Component {
     }
 
     if (source.droppableId === destination.droppableId) {
-      const tasks = reorder(
+      const DDD = reorder(
         this.getList(source.droppableId),
         source.index,
         destination.index
       );
 
-      let state = { tasks };
+      let state = { DDD };
 
       if (source.droppableId === "droppable2") {
-        state = { inProgress: tasks };
+        state = { inProgress: DDD };
+        this.setState({ ...this.state, state });
+      } else if (source.droppableId === "droppable3") {
+        state = { review: DDD };
+        this.setState({ ...this.state, state });
+      } else if (source.droppableId === "droppable") {
+        state = { tasks: DDD };
+        this.setState({ ...this.state, state });
       }
-      this.setState(state);
     } else {
       const result = move(
         this.getList(source.droppableId),
         this.getList(destination.droppableId),
         source,
-        destination
+        destination,
+        data => {
+          this.setState({ ...this.state, ...data });
+        }
       );
-
-      this.setState({
-        tasks: result.droppable,
-        inProgress: result.droppable2
-      });
+      console.log("this.state :", this.state);
     }
   };
 
@@ -221,6 +255,39 @@ class App extends Component {
               style={getListStyle(snapshot.isDraggingOver)}
             >
               {this.state.inProgress.map((task, index) => (
+                <Draggable
+                  key={task.task_id}
+                  draggableId={task.task_id.toString()}
+                  index={index}
+                >
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      style={getItemStyle(
+                        snapshot.isDragging,
+                        provided.draggableProps.style
+                      )}
+                    >
+                      <div>{task.task_id}</div>
+                      <div>{task.task_name}</div>
+                      <div>{task.task_description}</div>
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
+        <Droppable droppableId="droppable3">
+          {(provided, snapshot) => (
+            <div
+              ref={provided.innerRef}
+              style={getListStyle(snapshot.isDraggingOver)}
+            >
+              {this.state.review.map((task, index) => (
                 <Draggable
                   key={task.task_id}
                   draggableId={task.task_id.toString()}

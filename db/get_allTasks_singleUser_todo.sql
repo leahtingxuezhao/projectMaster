@@ -1,2 +1,3 @@
-SELECT * FROM tasks
-WHERE  = $1 AND status = 'to do'
+SELECT * FROM tasks 
+WHERE owner = $1 AND status = 'to do';
+

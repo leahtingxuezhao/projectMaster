@@ -27,4 +27,6 @@ app.get("/api/getDoneTasks/:owner", taskCtrl.getDoneTasks);
 app.put("/api/updateTaskToInProgress/:task_id", taskCtrl.updateTaskInProgress);
 app.put("/api/updateTaskToReview/:task_id", taskCtrl.updateTaskReview);
 app.put("/api/updateTaskToDone/:task_id", taskCtrl.updateTaskDone);
+app.put("/api/updateTaskToDo/:task_id", taskCtrl.updateTaskToDo);
+
 // app.delete("/api/deleteTask/:user_id", taskCtrl.deleteTask);

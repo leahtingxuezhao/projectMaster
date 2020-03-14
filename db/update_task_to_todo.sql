@@ -1,5 +1,5 @@
 update tasks
-set status = 'review'
+set status = 'to do'
 where task_id = $1
 
 returning *
